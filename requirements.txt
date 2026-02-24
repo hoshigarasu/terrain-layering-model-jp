@@ -1,0 +1,11 @@
+numpy
+rasterio
+scipy
+Pillow
+svgwrite
+matplotlib
+flask
+svglib
+reportlab
+tqdm
+requests

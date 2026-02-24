@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>地形DEM取得 — 範囲選択</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      display: flex; flex-direction: row; height: 100vh;
+      background: #0f1623; color: #eee;
+      overflow: hidden;
+    }
+
+    /* LEFT PANEL */
+    #panel {
+      width: 192px;
+      flex-shrink: 0;
+      background: #111928;
+      border-right: 1px solid #1e2d42;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #panel-title {
+      padding: 10px 12px 8px;
+      font-size: 13px; font-weight: 700;
+      color: #7ec8e3;
+      border-bottom: 1px solid #1e2d42;
+      flex-shrink: 0;
+    }
+    #panel-title small {
+      display: block;
+      font-size: 10px; font-weight: 400;
+      color: #3d5570; margin-top: 1px;
+    }
+
+    .sec-label {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+      color: #2d4a63; text-transform: uppercase;
+      padding: 8px 12px 4px;
+      flex-shrink: 0;
+    }
+
+    /* Search */
+    #search-section { padding: 0 10px 6px; flex-shrink: 0; }
+    #search-row { display: flex; }
+    #search-input {
+      flex: 1; padding: 5px 8px; font-size: 12px;
+      border: 1px solid #1e3050; border-right: none;
+      border-radius: 3px 0 0 3px;
+      background: #0c1420; color: #dde6ee; outline: none;
+      min-width: 0;
+    }
+    #search-input::placeholder { color: #2d4460; }
+    #search-input:focus { border-color: #2d6a9f; }
+    #search-btn {
+      padding: 5px 8px; background: #1a3d5c; color: #7ec8e3;
+      border: 1px solid #1e3050; border-left: none;
+      border-radius: 0 3px 3px 0; font-size: 12px;
+      cursor: pointer; flex-shrink: 0;
+      transition: background 0.1s;
+    }
+    #search-btn:hover { background: #2d6a9f; color: #fff; }
+    #search-results {
+      background: #0d1828;
+      border: 1px solid #2d6a9f; border-top: none;
+      border-radius: 0 0 4px 4px;
+      max-height: 200px; overflow-y: auto;
+      display: none;
+      box-shadow: 4px 6px 20px rgba(0,0,0,0.7);
+    }
+    .sri {
+      padding: 5px 9px; font-size: 11px; color: #b0c4d4;
+      cursor: pointer; border-bottom: 1px solid #141e2e; line-height: 1.4;
+    }
+    .sri:last-child { border-bottom: none; }
+    .sri:hover { background: #1a4f7a; color: #fff; }
+    .sri .pname   { font-weight: 700; color: #7ec8e3; }
+    .sri .pdetail { color: #3d5570; font-size: 10px; }
+    #search-msg   { padding: 7px 9px; font-size: 11px; color: #3d5570; }
+
+    /* Layer switcher */
+    #layer-section { padding: 0 10px 6px; flex-shrink: 0; }
+    #layer-switcher { display: flex; flex-direction: column; gap: 3px; }
+    .layer-btn {
+      width: 100%; padding: 5px 9px;
+      font-size: 11px; font-weight: 600; text-align: left;
+      border: 1px solid #1a2a3e; border-radius: 3px;
+      background: transparent; color: #4a6278;
+      cursor: pointer; transition: all 0.1s;
+    }
+    .layer-btn:hover { border-color: #2d6a9f55; color: #7ec8e3; background: #0d1e30; }
+    .layer-btn.active { background: #0f2a44; border-color: #2d6a9f; color: #7ec8e3; }
+
+    .sec-divider { height: 1px; background: #1a2536; margin: 4px 0; flex-shrink: 0; }
+
+    /* Action buttons */
+    #action-section { padding: 0 10px 6px; flex-shrink: 0; }
+    .btn {
+      width: 100%; padding: 6px 10px; margin-bottom: 3px;
+      border: none; border-radius: 3px;
+      font-size: 11px; font-weight: 700;
+      cursor: pointer; transition: all 0.1s; text-align: left;
+    }
+    .btn:last-child { margin-bottom: 0; }
+    .btn-draw    { background: #2a1a48; color: #b090e8; border: 1px solid #3a2660; }
+    .btn-draw:hover { background: #3d2870; color: #d0b8ff; }
+    .btn-primary { background: #0e2840; color: #6ab4d8; border: 1px solid #1a3d5c; }
+    .btn-primary:hover { background: #1a4f7a; color: #aad8f0; }
+    .btn-success { background: #0e2a1a; color: #5ac880; border: 1px solid #163d24; }
+    .btn-success:hover { background: #1c5c30; color: #8ae8a8; }
+    .btn-disabled {
+      background: #0c1520 !important; color: #1e2e3e !important;
+      border-color: #131e2a !important;
+      cursor: not-allowed; pointer-events: none;
+    }
+    #btn-use { display: none; }
+
+    #status-section { padding: 4px 12px 6px; flex-shrink: 0; min-height: 20px; }
+    #status { font-size: 11px; line-height: 1.4; }
+    #status.ok      { color: #2ecc71; }
+    #status.err     { color: #e74c3c; }
+    #status.working { color: #f39c12; }
+
+    #progress-bar-wrap {
+      display: none; height: 3px; background: #0c1520;
+      flex-shrink: 0; margin: 0 10px;
+    }
+    #progress-bar {
+      height: 100%; background: linear-gradient(90deg, #2d6a9f, #7ec8e3);
+      width: 0%; transition: width 0.3s;
+    }
+
+    #coords-section { padding: 6px 12px; flex-shrink: 0; display: none; }
+    #coords-display { font-size: 10px; color: #4a6278; line-height: 1.7; }
+    #coords-display .cv { color: #7ec8e3; font-weight: 700; font-size: 11px; }
+    #coords-display .warn { color: #f39c12; font-size: 10px; }
+
+    #attr-section { padding: 0 12px 10px; margin-top: auto; flex-shrink: 0; }
+    #attr-note { font-size: 9px; color: #1e3045; line-height: 1.5; }
+    #attr-note a { color: #1e3045; text-decoration: none; }
+    #attr-note a:hover { color: #7ec8e3; }
+
+    /* MAP */
+    #map { flex: 1; position: relative; min-width: 0; }
+
+    #zoom-badge {
+      position: absolute; bottom: 28px; right: 8px;
+      background: rgba(10,16,28,0.82);
+      color: #7ec8e3; font-size: 11px; font-weight: 700;
+      padding: 3px 9px; border-radius: 4px;
+      z-index: 1000; pointer-events: none;
+      border: 1px solid #2d6a9f28;
+    }
+
+    .leaflet-control-layers,
+    .leaflet-draw { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div id="panel">
+  <div id="panel-title">
+    🗾 地形DEM取得
+    <small>範囲選択 &amp; DEM ダウンロード</small>
+  </div>
+
+  <div class="sec-label">場所を検索</div>
+  <div id="search-section">
+    <div id="search-row">
+      <input id="search-input" type="text" placeholder="地名を入力..." autocomplete="off"/>
+      <button id="search-btn" onclick="doSearch()">&#x21b5;</button>
+    </div>
+    <div id="search-results"></div>
+  </div>
+
+  <div class="sec-divider"></div>
+  <div class="sec-label">地図レイヤー</div>
+  <div id="layer-section">
+    <div id="layer-switcher">
+      <button class="layer-btn"        data-key="gsi_std"    onclick="switchLayer(this)">🗾 地理院標準</button>
+      <button class="layer-btn"        data-key="gsi_pale"   onclick="switchLayer(this)">📋 地理院淡色</button>
+      <button class="layer-btn active" data-key="satellite"  onclick="switchLayer(this)">🛰 衛星写真</button>
+      <button class="layer-btn"        data-key="gsi_relief" onclick="switchLayer(this)">🏔 地理院陰影起伏</button>
+      <button class="layer-btn"        data-key="otm"        onclick="switchLayer(this)">📏 等高線</button>
+    </div>
+  </div>
+
+  <div class="sec-divider"></div>
+  <div class="sec-label">操作</div>
+  <div id="action-section">
+    <button class="btn btn-draw"                 id="btn-draw"     onclick="startDrawing()">📐 範囲を選択</button>
+    <button class="btn btn-primary btn-disabled" id="btn-download" onclick="startDownload()">📥 DEM取得</button>
+    <button class="btn btn-success"              id="btn-use"      onclick="loadInGui()">✅ GUIで使用</button>
+  </div>
+
+  <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+  <div id="status-section"><span id="status"></span></div>
+
+  <div id="coords-section">
+    <div class="sec-label" style="padding:0 0 4px;">選択範囲</div>
+    <div id="coords-display"></div>
+  </div>
+
+  <div id="attr-section">
+    <div id="attr-note"></div>
+  </div>
+</div>
+
+<div id="map">
+  <div id="zoom-badge">zoom --</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script>
+
+const LAYERS = {
+  gsi_std: {
+    url:     'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',
+    attr:    '&copy; <a href="https://www.gsi.go.jp/">国土地理院</a>',
+    maxZoom: 18,
+    note:    '🗾 地理院標準地図 — 等高線・地名・道路',
+  },
+  gsi_pale: {
+    url:     'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
+    attr:    '&copy; <a href="https://www.gsi.go.jp/">国土地理院</a>',
+    maxZoom: 18,
+    note:    '📋 地理院淡色地図 — 視認性の高い薄色ベース',
+  },
+  satellite: {
+    url:     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attr:    'Tiles &copy; Esri',
+    maxZoom: 19,
+    note:    '🛰 ESRI衛星写真 — 実際の地表面・植生・地形確認に最適',
+  },
+  gsi_relief: {
+    url:     'https://cyberjapandata.gsi.go.jp/xyz/hillshademap/{z}/{x}/{y}.png',
+    attr:    '&copy; <a href="https://www.gsi.go.jp/">国土地理院</a>',
+    maxZoom: 16,
+    note:    '🏔 地理院陰影起伏図 — 地形の凹凸を直感的に把握 (max zoom 16)',
+  },
+  otm: {
+    url:     'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attr:    'Map &copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors | Style &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+    maxZoom: 17,
+    subdomains: 'abc',
+    note:    '📏 OpenTopoMap — 等高線付き、標高インターバルの確認に最適',
+  },
+};
+
+const map = L.map('map').setView([36.5, 137.5], 7);
+let currentTileLayer = null;
+
+function switchLayer(btn) {
+  const key = btn.dataset.key;
+  const def = LAYERS[key];
+  if (!def) return;
+  if (currentTileLayer) map.removeLayer(currentTileLayer);
+  currentTileLayer = L.tileLayer(def.url, {
+    attribution: def.attr, maxZoom: def.maxZoom,
+    subdomains: def.subdomains || 'abc',
+  }).addTo(map);
+  document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('attr-note').innerHTML = def.note;
+}
+
+// Default: satellite
+currentTileLayer = L.tileLayer(LAYERS.satellite.url, {
+  attribution: LAYERS.satellite.attr, maxZoom: LAYERS.satellite.maxZoom,
+}).addTo(map);
+document.getElementById('attr-note').innerHTML = LAYERS.satellite.note;
+
+const zoomBadge = document.getElementById('zoom-badge');
+function updateZoomBadge() {
+  const z = map.getZoom();
+  const latR = map.getCenter().lat * Math.PI / 180;
+  const mpp = Math.round(156543 * Math.cos(latR) / Math.pow(2, z));
+  const res = mpp >= 1000 ? (mpp/1000).toFixed(1)+' km/px' : mpp+' m/px';
+  zoomBadge.textContent = 'zoom '+z+'  ('+res+')';
+}
+map.on('zoomend moveend', updateZoomBadge);
+updateZoomBadge();
+
+const drawnItems = new L.FeatureGroup();
+map.addLayer(drawnItems);
+L.drawLocal.draw.handlers.rectangle.tooltip = { start: '', end: '' };
+L.drawLocal.edit.handlers.edit.tooltip = { text: '', subtext: '' };
+const drawControl = new L.Control.Draw({
+  draw: {
+    polyline: false, polygon: false, circle: false,
+    marker: false, circlemarker: false,
+    rectangle: { shapeOptions: { color: '#e74c3c', weight: 2, fillOpacity: 0.06 } },
+  },
+  edit: { featureGroup: drawnItems },
+});
+map.addControl(drawControl);
+
+let rectHandler = null;
+function startDrawing() {
+  if (rectHandler && rectHandler._enabled) {
+    rectHandler.disable();
+    document.getElementById('btn-draw').textContent = '📐 範囲を選択';
+    return;
+  }
+  rectHandler = new L.Draw.Rectangle(map, drawControl.options.draw.rectangle);
+  rectHandler.enable();
+  document.getElementById('btn-draw').textContent = '✖ キャンセル';
+}
+map.on(L.Draw.Event.CREATED, () => {
+  document.getElementById('btn-draw').textContent = '📐 範囲を再選択';
+});
+
+let selectedBounds = null, currentJobId = null, pollTimer = null, readyFile = null;
+
+map.on(L.Draw.Event.CREATED, (e) => {
+  drawnItems.clearLayers();
+  drawnItems.addLayer(e.layer);
+  const b = e.layer.getBounds();
+  selectedBounds = { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() };
+
+  if (selectedBounds.north > 85.05 || selectedBounds.south < -85.05) {
+    setStatus('err', '緯度が範囲外 (±85°以内)'); return;
+  }
+  const dLat = Math.abs(selectedBounds.north - selectedBounds.south);
+  const dLon = Math.abs(selectedBounds.east  - selectedBounds.west);
+  const area = dLat * dLon;
+  const warn = area > 4 ? '広範囲 — 時間がかかります' : area > 1 ? 'やや広い範囲' : '';
+
+  document.getElementById('coords-section').style.display = 'block';
+  document.getElementById('coords-display').innerHTML =
+    'N <span class="cv">' + selectedBounds.north.toFixed(4) + '</span><br>' +
+    'S <span class="cv">' + selectedBounds.south.toFixed(4) + '</span><br>' +
+    'E <span class="cv">' + selectedBounds.east.toFixed(4)  + '</span><br>' +
+    'W <span class="cv">' + selectedBounds.west.toFixed(4)  + '</span>' +
+    (warn ? '<br><span class="warn">\u26a0 ' + warn + '</span>' : '');
+
+  document.getElementById('btn-download').classList.remove('btn-disabled');
+  document.getElementById('btn-use').style.display = 'none';
+  readyFile = null;
+  setStatus('', '');
+});
+
+function startDownload() {
+  if (!selectedBounds) return;
+  setStatus('working', 'DEM取得中...');
+  document.getElementById('btn-download').classList.add('btn-disabled');
+  document.getElementById('btn-use').style.display = 'none';
+  document.getElementById('progress-bar-wrap').style.display = 'block';
+  setProgress(5);
+  fetch('/api/download_dem', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(selectedBounds),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.success) { setStatus('err', 'エラー: ' + data.error); return; }
+    currentJobId = data.job_id;
+    pollTimer = setInterval(pollStatus, 600);
+  })
+  .catch(err => setStatus('err', '通信エラー: ' + err));
+}
+
+function pollStatus() {
+  fetch('/api/job_status/' + currentJobId).then(r => r.json()).then(data => {
+    if (!data.success) return;
+    if (data.progress != null) setProgress(data.progress);
+    if (data.status === 'completed') {
+      clearInterval(pollTimer); setProgress(100);
+      setStatus('ok', '✓ 取得完了');
+      document.getElementById('btn-use').style.display = 'block';
+      document.getElementById('btn-download').classList.remove('btn-disabled');
+      readyFile = currentJobId;
+    } else if (data.status === 'failed') {
+      clearInterval(pollTimer);
+      setStatus('err', '失敗: ' + (data.error || '不明なエラー'));
+      document.getElementById('btn-download').classList.remove('btn-disabled');
+    }
+  });
+}
+
+function loadInGui() {
+  if (!readyFile) return;
+  setStatus('working', 'GUIに送信中...');
+  fetch('/api/load_in_gui/' + readyFile, { method: 'POST' }).then(r => r.json()).then(data => {
+    if (data.success) { setStatus('ok', 'GUIにロードしました'); document.getElementById('btn-use').style.display = 'none'; }
+    else setStatus('err', 'エラー: ' + data.error);
+  });
+}
+
+function setStatus(cls, msg) {
+  const el = document.getElementById('status'); el.className = cls; el.textContent = msg;
+}
+function setProgress(pct) { document.getElementById('progress-bar').style.width = pct + '%'; }
+
+let searchTimer = null;
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch(); if (e.key === 'Escape') closeResults();
+});
+document.addEventListener('click', e => {
+  if (!document.getElementById('search-section').contains(e.target)) closeResults();
+});
+
+function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+  const res = document.getElementById('search-results');
+  res.style.display = 'block';
+  res.innerHTML = '<div id="search-msg">Searching...</div>';
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    fetch('https://nominatim.openstreetmap.org/search?format=json&limit=8&q=' + encodeURIComponent(q), {
+      headers: { 'Accept-Language': 'ja,en' }
+    })
+    .then(r => r.json()).then(data => renderResults(data))
+    .catch(() => { res.innerHTML = '<div id="search-msg">Search failed</div>'; });
+  }, 200);
+}
+
+function renderResults(data) {
+  const res = document.getElementById('search-results');
+  if (!data.length) { res.innerHTML = '<div id="search-msg">No results</div>'; return; }
+  res.innerHTML = data.map((item, i) => {
+    const parts = item.display_name.split(', ');
+    const name = parts.slice(0,2).join(', ');
+    const detail = parts.slice(2).join(', ');
+    return '<div class="sri" onclick="flyToResult('+i+')"><div class="pname">' + escHtml(name) + '</div>' +
+      (detail ? '<div class="pdetail">' + escHtml(detail) + '</div>' : '') + '</div>';
+  }).join('');
+  res._data = data;
+}
+
+function flyToResult(i) {
+  const res = document.getElementById('search-results');
+  const item = res._data[i]; if (!item) return;
+  if (item.boundingbox) {
+    const bb = item.boundingbox.map(Number);
+    map.fitBounds([[bb[0],bb[2]],[bb[1],bb[3]]], { maxZoom: 14, animate: true });
+  } else {
+    map.setView([+item.lat, +item.lon], 12, { animate: true });
+  }
+  closeResults();
+  document.getElementById('search-input').value = item.display_name.split(', ').slice(0,2).join(', ');
+}
+
+function closeResults() { document.getElementById('search-results').style.display = 'none'; }
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+</script>
+</body>
+</html>
