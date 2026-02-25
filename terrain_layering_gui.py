@@ -48,6 +48,20 @@ except ImportError:
 
 MAP_SERVER_PORT = 5001
 
+# ── クロスプラットフォーム対応フォント選択 ────────────────────────────────
+import platform as _platform
+_sys = _platform.system()
+if _sys == 'Windows':
+    UI_FONT      = 'Meiryo UI'
+    UI_FONT_MONO = 'MS Gothic'
+elif _sys == 'Darwin':
+    UI_FONT      = 'Hiragino Sans'
+    UI_FONT_MONO = 'Menlo'
+else:
+    # Linux: sudo apt install fonts-noto-cjk
+    UI_FONT      = 'Noto Sans CJK JP'
+    UI_FONT_MONO = 'Monospace'
+
 
 class TerrainLayerGUI:
     def __init__(self, root):
@@ -69,21 +83,6 @@ class TerrainLayerGUI:
         ACCENT_H = '#1a4f7a'   # ホバー時
         BG       = '#f0f0f0'
         FRAME_BG = '#e8e8e8'
-
-        # ── クロスプラットフォーム対応フォント選択 ────────────────────
-        import platform as _platform
-        _sys = _platform.system()
-        if _sys == 'Windows':
-            UI_FONT      = 'Meiryo UI'
-            UI_FONT_MONO = UI_FONT_MONO
-        elif _sys == 'Darwin':
-            UI_FONT      = 'Hiragino Sans'
-            UI_FONT_MONO = 'Menlo'
-        else:
-            # Linux: fonts-noto-cjk パッケージで導入
-            # sudo apt install fonts-noto-cjk
-            UI_FONT      = 'Noto Sans CJK JP'
-            UI_FONT_MONO = 'Monospace'
 
         style.configure('TFrame',       background=BG)
         style.configure('TLabel',       background=BG,      font=(UI_FONT, 9))
