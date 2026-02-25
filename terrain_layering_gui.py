@@ -70,19 +70,34 @@ class TerrainLayerGUI:
         BG       = '#f0f0f0'
         FRAME_BG = '#e8e8e8'
 
+        # ── クロスプラットフォーム対応フォント選択 ────────────────────
+        import platform as _platform
+        _sys = _platform.system()
+        if _sys == 'Windows':
+            UI_FONT      = 'Meiryo UI'
+            UI_FONT_MONO = UI_FONT_MONO
+        elif _sys == 'Darwin':
+            UI_FONT      = 'Hiragino Sans'
+            UI_FONT_MONO = 'Menlo'
+        else:
+            # Linux: fonts-noto-cjk パッケージで導入
+            # sudo apt install fonts-noto-cjk
+            UI_FONT      = 'Noto Sans CJK JP'
+            UI_FONT_MONO = 'Monospace'
+
         style.configure('TFrame',       background=BG)
-        style.configure('TLabel',       background=BG,      font=('Segoe UI', 9))
-        style.configure('TLabelframe',  background=FRAME_BG, font=('Segoe UI', 9, 'bold'),
+        style.configure('TLabel',       background=BG,      font=(UI_FONT, 9))
+        style.configure('TLabelframe',  background=FRAME_BG, font=(UI_FONT, 9, 'bold'),
                         relief='groove', borderwidth=2)
         style.configure('TLabelframe.Label', background=FRAME_BG, foreground=ACCENT,
-                        font=('Segoe UI', 9, 'bold'))
+                        font=(UI_FONT, 9, 'bold'))
         style.configure('TEntry',       fieldbackground='white', relief='sunken')
         style.configure('TCombobox',    fieldbackground='white')
         style.configure('TScrollbar',   background=BG, troughcolor=FRAME_BG)
 
         # ボタン共通
         style.configure('TButton',
-                        font=('Segoe UI', 9, 'bold'),
+                        font=(UI_FONT, 9, 'bold'),
                         padding=(8, 5),
                         relief='raised',
                         background='#dcdcdc')
@@ -92,7 +107,7 @@ class TerrainLayerGUI:
 
         # アクセントボタン（実行系）
         style.configure('Action.TButton',
-                        font=('Segoe UI', 9, 'bold'),
+                        font=(UI_FONT, 9, 'bold'),
                         padding=(8, 6),
                         relief='raised',
                         foreground='white',
@@ -103,18 +118,19 @@ class TerrainLayerGUI:
 
         # ── matplotlib 日本語フォント設定（文字化け対策） ─────────────
         import matplotlib
-        import platform
-        if platform.system() == 'Windows':
-            matplotlib.rcParams['font.family'] = 'MS Gothic'
-        elif platform.system() == 'Darwin':
+        if _sys == 'Windows':
+            matplotlib.rcParams['font.family'] = 'Meiryo'
+        elif _sys == 'Darwin':
             matplotlib.rcParams['font.family'] = 'Hiragino Sans'
         else:
-            # Linux: IPAフォントがあれば使う、なければ英語フォールバック
+            # Linux: 優先順位付きでフォントを検索
             import matplotlib.font_manager as fm
-            jp_fonts = [f.name for f in fm.fontManager.ttflist
-                        if any(k in f.name for k in ('IPA', 'Noto', 'TakaoGothic', 'VL', 'Droid'))]
-            if jp_fonts:
-                matplotlib.rcParams['font.family'] = jp_fonts[0]
+            _pref = ['Noto Sans CJK JP', 'Noto Sans CJK', 'IPAPGothic', 'IPAGothic',
+                     'TakaoGothic', 'VL Gothic', 'Droid Sans Fallback']
+            _avail = {f.name for f in fm.fontManager.ttflist}
+            _found = next((f for f in _pref if f in _avail), None)
+            if _found:
+                matplotlib.rcParams['font.family'] = _found
         matplotlib.rcParams['axes.unicode_minus'] = False
 
         # 変数の初期化
@@ -424,7 +440,7 @@ class TerrainLayerGUI:
                    style="Action.TButton").pack(fill=tk.X, pady=(3, 0))
 
         self.file_label = ttk.Label(file_frame, text="未選択", foreground="gray",
-                                    font=('Segoe UI', 8), wraplength=240)
+                                    font=(UI_FONT, 8), wraplength=240)
         self.file_label.pack(fill=tk.X, pady=(3, 0))
 
         # === 2. 基本設定 ===
@@ -444,11 +460,11 @@ class TerrainLayerGUI:
         # 縮尺・1層厚さ（GeoTIFFロード後に自動計算）
         ttk.Separator(basic_frame, orient='horizontal').grid(row=2, column=0, columnspan=3, sticky=tk.EW, pady=(4,2))
         ttk.Label(basic_frame, text="縮尺:").grid(row=3, column=0, sticky=tk.W)
-        self.scale_ratio_label = ttk.Label(basic_frame, text="—", foreground='#2d6a9f', font=('Segoe UI', 9, 'bold'))
+        self.scale_ratio_label = ttk.Label(basic_frame, text="—", foreground='#2d6a9f', font=(UI_FONT, 9, 'bold'))
         self.scale_ratio_label.grid(row=3, column=1, columnspan=2, sticky=tk.W)
 
         ttk.Label(basic_frame, text="1層の厚さ:").grid(row=4, column=0, sticky=tk.W)
-        self.layer_thick_label = ttk.Label(basic_frame, text="—", foreground='#2d6a9f', font=('Segoe UI', 9, 'bold'))
+        self.layer_thick_label = ttk.Label(basic_frame, text="—", foreground='#2d6a9f', font=(UI_FONT, 9, 'bold'))
         self.layer_thick_label.grid(row=4, column=1, columnspan=2, sticky=tk.W)
 
         # interval変更時に自動再計算（scale_var/paper_size_varは後で定義されるため
@@ -552,10 +568,10 @@ class TerrainLayerGUI:
         )
         self.progress_bar.pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Label(bar_frame, textvariable=self.progress_phase,
-                  width=13, font=('Segoe UI', 8)).pack(side=tk.LEFT, padx=(4, 0))
+                  width=13, font=(UI_FONT, 8)).pack(side=tk.LEFT, padx=(4, 0))
 
         self.progress_text = scrolledtext.ScrolledText(progress_frame, height=8, width=30,
-                                                       font=('Consolas', 8))
+                                                       font=(UI_FONT_MONO, 8))
         self.progress_text.pack(fill=tk.BOTH, expand=True)
 
         # scale_var / paper_size_var は出力設定セクションで定義済みなのでここで登録
@@ -569,7 +585,7 @@ class TerrainLayerGUI:
 
         # "プレビュー" ラベルを自前で配置
         header = tk.Label(outer, text="プレビュー", anchor='w',
-                          font=('Segoe UI', 9, 'bold'),
+                          font=(UI_FONT, 9, 'bold'),
                           foreground='#2d6a9f', background='#e8e8e8',
                           padx=4, pady=2)
         header.pack(fill=tk.X)
@@ -581,7 +597,7 @@ class TerrainLayerGUI:
         self._placeholder = ttk.Label(
             preview_frame,
             text="GeoTIFFファイルを選択してください",
-            font=('Segoe UI', 14),
+            font=(UI_FONT, 14),
             foreground='#999999',
             anchor='center'
         )
@@ -1107,18 +1123,19 @@ class TerrainLayerGUI:
             safe_draw_string(c, MARGIN + 30 * mm, y, value, JP_FONT, 12)
 
     def _generate_pdf_internal(self, svg_files, params):
-        """内部用：PDFを生成して返す（大容量SVG対応 PIL ラスタライザ搭載）"""
+        """内部用：PDFを生成して返す"""
         try:
             self.log("\n=== PDF生成開始 ===")
-
+            
             from svglib.svglib import svg2rlg
             from reportlab.graphics import renderPDF
             from reportlab.pdfgen import canvas
             from reportlab.lib.pagesizes import A4, A3, B4
             from reportlab.lib.units import mm
-
+            
             output_dir = Path(params['output_dir'])
-
+            
+            # 用紙サイズの取得
             paper_size_name = params['paper_size']
             if 'A4' in paper_size_name:
                 page_size = A4
@@ -1128,325 +1145,114 @@ class TerrainLayerGUI:
                 page_size = B4
             else:
                 page_size = A4
-
+            
             page_width, page_height = page_size
+            
+            # PDFファイルパス
             pdf_path = output_dir / 'print_all_layers.pdf'
+            
+            # PDFを作成（最初は仮のページサイズ）
             c = canvas.Canvas(str(pdf_path), pagesize=page_size)
 
-            # ── 表紙ページ（アスペクト比に合わせて向きを自動決定） ────────
-            cover_w, cover_h = page_width, page_height
+            # ── 表紙ページ ──────────────────────────────────────────────
+            # カバーページの向きをプレビュー画像のアスペクト比に合わせる
+            cover_page_width  = page_width
+            cover_page_height = page_height
             if self.preview_image is not None:
-                img_w, img_h = self.preview_image.size
-                if (img_w > img_h) != (page_width > page_height):
-                    cover_w, cover_h = page_height, page_width
-            c.setPageSize((cover_w, cover_h))
-            self._draw_cover_page(c, cover_w, cover_h, mm, params)
+                img_w, img_h  = self.preview_image.size
+                img_aspect    = img_w / img_h
+                cover_aspect  = cover_page_width / cover_page_height
+                if (img_aspect > 1.0) != (cover_aspect > 1.0):
+                    # 画像と用紙の向きが違う → 用紙を90°回転
+                    cover_page_width, cover_page_height = cover_page_height, cover_page_width
+            c.setPageSize((cover_page_width, cover_page_height))
+            self._draw_cover_page(c, cover_page_width, cover_page_height, mm, params)
             c.showPage()
-
-            # ── Pure-Python SVG → PIL ラスタライザ ─────────────────────────
-            # SVGの構成要素: 背景<rect>, オプションのbase64 <image>(衛星写真/gsi_topo),
-            # M/L/Z直線パスのみ。cairo DLL不要、Pillowのみで動作。
-
-            def _parse_color(color_str, default=(255, 255, 255)):
-                """SVGカラー文字列 → (R,G,B) タプル"""
-                if not color_str or color_str in ('none', 'transparent'):
-                    return None
-                s = color_str.strip()
-                if s.startswith('#'):
-                    s = s.lstrip('#')
-                    if len(s) == 3:
-                        s = s[0]*2 + s[1]*2 + s[2]*2
-                    try:
-                        return (int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16))
-                    except Exception:
-                        return default
-                named = {'white': (255,255,255), 'black': (0,0,0),
-                         'red': (255,0,0), 'green': (0,128,0), 'blue': (0,0,255)}
-                return named.get(s, default)
-
-            def _parse_svg_path_to_polygons(d):
-                """SVGパスデータ(M/L/Zのみ)をポリゴン座標リストに変換"""
-                import re
-                polygons = []
-                current = []
-                tokens = re.findall(
-                    r'[MLZmlz]|[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?', d)
-                i = 0
-                while i < len(tokens):
-                    t = tokens[i]
-                    if t in ('M', 'm'):
-                        if current:
-                            polygons.append(current)
-                            current = []
-                        i += 1
-                        if i + 1 < len(tokens):
-                            try:
-                                x, y = float(tokens[i]), float(tokens[i+1])
-                                current = [(x, y)]
-                                i += 2
-                            except ValueError:
-                                i += 1
-                    elif t in ('L', 'l'):
-                        i += 1
-                        if i + 1 < len(tokens):
-                            try:
-                                x, y = float(tokens[i]), float(tokens[i+1])
-                                current.append((x, y))
-                                i += 2
-                            except ValueError:
-                                i += 1
-                    elif t in ('Z', 'z'):
-                        if current:
-                            polygons.append(current)
-                            current = []
-                        i += 1
-                    else:
-                        if current:
-                            try:
-                                x, y = float(tokens[i]), float(tokens[i+1])
-                                current.append((x, y))
-                                i += 2
-                            except (ValueError, IndexError):
-                                i += 1
-                        else:
-                            i += 1
-                if current:
-                    polygons.append(current)
-                return polygons
-
-            def _svg_info(svg_path):
-                """SVGのviewBox寸法(vb_w, vb_h)を返す"""
-                import xml.etree.ElementTree as ET
-                try:
-                    tree = ET.parse(str(svg_path))
-                    root = tree.getroot()
-                    vb = (root.get('viewBox')
-                          or root.get('{http://www.w3.org/2000/svg}viewBox'))
-                    if vb:
-                        parts = vb.replace(',', ' ').split()
-                        if len(parts) == 4:
-                            return float(parts[2]), float(parts[3])
-                    import re
-                    def _num(s):
-                        m = re.search(r'[\d.]+', s or '1')
-                        return float(m.group()) if m else 1.0
-                    return _num(root.get('width', '1')), _num(root.get('height', '1'))
-                except Exception:
-                    return 1.0, 1.0
-
-            def _draw_svg_via_pil(svg_path, canvas_obj, pg_w, pg_h, margin_pt, layer_label):
-                """
-                SVG → PIL Image → PNG bytes → reportlab canvas に埋め込み。
-                衛星写真・gsi_topoのbase64 <image>要素も正しく処理する。
-                """
-                import xml.etree.ElementTree as ET
-                import io, base64
-                from PIL import Image, ImageDraw
-                from reportlab.lib.utils import ImageReader
-
-                vb_w, vb_h = _svg_info(svg_path)
-                avail_w_pt = pg_w - 2 * margin_pt
-                avail_h_pt = pg_h - 2 * margin_pt
-                # points → pixels @ 150 DPI
-                out_w = max(1, int(avail_w_pt / 72 * 150))
-                out_h = max(1, int(avail_h_pt / 72 * 150))
-
-                svg_aspect = vb_w / vb_h if vb_h > 0 else 1.0
-                if out_w / out_h > svg_aspect:
-                    out_w = max(1, int(out_h * svg_aspect))
-                else:
-                    out_h = max(1, int(out_w / svg_aspect))
-
-                sx = out_w / vb_w
-                sy = out_h / vb_h
-
-                img = Image.new('RGB', (out_w, out_h), (255, 255, 255))
-                draw = ImageDraw.Draw(img)
-
-                XLINK_NS = 'http://www.w3.org/1999/xlink'
-                tree = ET.parse(str(svg_path))
-                root = tree.getroot()
-
-                def strip_ns(tag):
-                    return tag.split('}')[-1] if '}' in tag else tag
-
-                for elem in root.iter():
-                    tag = strip_ns(elem.tag)
-
-                    if tag == 'rect':
-                        rx = float(elem.get('x', 0)) * sx
-                        ry = float(elem.get('y', 0)) * sy
-                        rw = float(elem.get('width',  vb_w)) * sx
-                        rh = float(elem.get('height', vb_h)) * sy
-                        fill = _parse_color(elem.get('fill', 'white'))
-                        if fill:
-                            draw.rectangle([rx, ry, rx + rw, ry + rh], fill=fill)
-
-                    elif tag == 'image':
-                        # base64埋め込み画像（衛星写真 / gsi_topoタイル）
-                        href = (elem.get(f'{{{XLINK_NS}}}href')
-                                or elem.get('href', ''))
-                        if href.startswith('data:'):
-                            try:
-                                _, data = href.split(',', 1)
-                                tile_img = Image.open(
-                                    io.BytesIO(base64.b64decode(data)))
-                                ix = int(float(elem.get('x', 0)) * sx)
-                                iy = int(float(elem.get('y', 0)) * sy)
-                                iw = int(float(elem.get('width',  vb_w)) * sx)
-                                ih = int(float(elem.get('height', vb_h)) * sy)
-                                tile_img = tile_img.resize(
-                                    (max(1, iw), max(1, ih)), Image.LANCZOS)
-                                img.paste(tile_img, (ix, iy))
-                                draw = ImageDraw.Draw(img)  # paste後に再生成
-                            except Exception:
-                                pass
-
-                    elif tag == 'path':
-                        d = elem.get('d', '')
-                        if not d:
-                            continue
-                        fill_color   = _parse_color(elem.get('fill',   'none'))
-                        stroke_color = _parse_color(elem.get('stroke', 'none'))
-                        stroke_w     = float(elem.get('stroke-width', 1))
-                        for poly in _parse_svg_path_to_polygons(d):
-                            if len(poly) < 2:
-                                continue
-                            scaled = [(x * sx, y * sy) for x, y in poly]
-                            if fill_color and len(scaled) >= 3:
-                                draw.polygon(scaled, fill=fill_color)
-                            if stroke_color:
-                                sw = max(1, int(stroke_w * min(sx, sy)))
-                                draw.line(scaled + [scaled[0]],
-                                          fill=stroke_color, width=sw)
-
-                # PDF に埋め込み
-                buf = io.BytesIO()
-                img.save(buf, format='PNG', optimize=False)
-                buf.seek(0)
-                img_reader = ImageReader(buf)
-                img_w_pt, img_h_pt = img_reader.getSize()
-                fit_scale = min(avail_w_pt / img_w_pt, avail_h_pt / img_h_pt)
-                draw_w = img_w_pt * fit_scale
-                draw_h = img_h_pt * fit_scale
-                canvas_obj.drawImage(
-                    img_reader,
-                    (pg_w - draw_w) / 2, (pg_h - draw_h) / 2,
-                    width=draw_w, height=draw_h, mask='auto')
-                canvas_obj.setFont("Helvetica", 10)
-                canvas_obj.drawString(margin_pt, margin_pt / 2, layer_label)
-
-            # ─────────────────────────────────────────────────────────────
-
-            RASTER_THRESHOLD_MB = 8.0
 
             for i, svg_file in enumerate(svg_files, 1):
                 self.log(f"[{i}/{len(svg_files)}] {svg_file.name} を変換中...")
-                page_drawn = False
-
-                file_size_mb = svg_file.stat().st_size / 1_048_576
-                force_raster = file_size_mb > RASTER_THRESHOLD_MB
-                if force_raster:
-                    self.log(f"  {file_size_mb:.1f} MB > {RASTER_THRESHOLD_MB} MB "
-                             f"→ PIL ラスタ化")
-
-                # 向きを viewBox から事前確定（例外時も正しい向きで描画）
-                vb_w, vb_h    = _svg_info(svg_file)
-                svg_aspect    = vb_w / vb_h if vb_h > 0 else 1.0
-                page_aspect   = page_width / page_height
-                use_landscape = (svg_aspect > 1.0) != (page_aspect > 1.0)
-                if use_landscape:
-                    current_page_width  = page_height
-                    current_page_height = page_width
-                else:
-                    current_page_width  = page_width
-                    current_page_height = page_height
-
+                
                 try:
-                    drawing = None
-                    if not force_raster:
-                        drawing = svg2rlg(str(svg_file))
-
-                    if drawing and drawing.width > 0 and drawing.height > 0:
-                        # svglib ベクター描画
-                        rl_aspect = drawing.width / drawing.height
-                        use_landscape = (rl_aspect > 1.0) != (page_aspect > 1.0)
+                    # SVGをReportLab Drawing objectに変換
+                    drawing = svg2rlg(str(svg_file))
+                    
+                    if drawing:
+                        # SVGのサイズを取得
+                        svg_width = drawing.width
+                        svg_height = drawing.height
+                        
+                        # SVGと用紙のアスペクト比を比較
+                        svg_aspect = svg_width / svg_height
+                        page_aspect = page_width / page_height
+                        
+                        # 用紙を最大限活用するために向きを決定
+                        use_landscape = False
+                        
+                        if svg_aspect > 1.0 and page_aspect < 1.0:
+                            # SVGが横長、用紙が縦長 → 用紙を横向きに
+                            use_landscape = True
+                        elif svg_aspect < 1.0 and page_aspect > 1.0:
+                            # SVGが縦長、用紙が横長 → 用紙を縦向きに（通常と逆）
+                            use_landscape = True
+                        
+                        # 現在のページサイズを決定
                         if use_landscape:
-                            current_page_width  = page_height
+                            current_page_width = page_height
                             current_page_height = page_width
-                            self.log(f"  → 横向き "
-                                     f"({current_page_width:.0f}x{current_page_height:.0f})")
+                            self.log(f"  → 横向き配置 ({current_page_width:.0f}x{current_page_height:.0f})")
+                        else:
+                            current_page_width = page_width
+                            current_page_height = page_height
+                        
+                        # ページサイズを設定（最初のページも含む）
                         c.setPageSize((current_page_width, current_page_height))
-
+                        
+                        # マージンを考慮（各辺10mm）
                         margin = 10 * mm
-                        scale  = min(
-                            (current_page_width  - 2*margin) / drawing.width,
-                            (current_page_height - 2*margin) / drawing.height)
-                        scaled_w = drawing.width  * scale
-                        scaled_h = drawing.height * scale
-                        x = (current_page_width  - scaled_w) / 2
-                        y = (current_page_height - scaled_h) / 2
-
-                        c.saveState()
-                        c.translate(x, y)
-                        c.scale(scale, scale)
-                        renderPDF.draw(drawing, c, 0, 0)
-                        c.restoreState()
-
+                        available_width = current_page_width - 2 * margin
+                        available_height = current_page_height - 2 * margin
+                        
+                        # アスペクト比を保ちながらフィット
+                        scale_x = available_width / svg_width
+                        scale_y = available_height / svg_height
+                        scale = min(scale_x, scale_y)
+                        
+                        # スケーリング適用
+                        drawing.width = svg_width * scale
+                        drawing.height = svg_height * scale
+                        drawing.scale(scale, scale)
+                        
+                        # 中央配置
+                        x = (current_page_width - drawing.width) / 2
+                        y = (current_page_height - drawing.height) / 2
+                        
+                        # PDFに描画
+                        renderPDF.draw(drawing, c, x, y)
+                        
+                        # ページ情報を追加
                         c.setFont("Helvetica", 10)
-                        c.drawString(margin, margin / 2,
-                                     f"Layer {i}/{len(svg_files)}: {svg_file.stem}")
-                        page_drawn = True
-
+                        c.drawString(margin, margin / 2, 
+                                   f"Layer {i}/{len(svg_files)}: {svg_file.stem}")
+                        
+                        # 次のページへ（最後のページ以外）
+                        if i < len(svg_files):
+                            c.showPage()
                     else:
-                        # PIL ラスタライザ（大容量SVG / svglib失敗時）
-                        if not force_raster:
-                            self.log(f"  svg2rlg失敗 ({file_size_mb:.1f} MB) "
-                                     f"→ PIL ラスタ化")
-                        self.log(f"  → {'横向き' if use_landscape else '縦向き'} "
-                                 f"(PIL, aspect={svg_aspect:.2f})")
-                        c.setPageSize((current_page_width, current_page_height))
-                        _draw_svg_via_pil(
-                            svg_file, c,
-                            current_page_width, current_page_height, 10 * mm,
-                            f"Layer {i}/{len(svg_files)}: {svg_file.stem} [ラスタ化]")
-                        page_drawn = True
-
+                        self.log(f"  警告: {svg_file.name} の変換に失敗")
+                        
                 except Exception as e:
                     self.log(f"  エラー: {svg_file.name} - {e}")
-                    import traceback
-                    self.log(traceback.format_exc())
-                    # PIL で再試行
-                    try:
-                        self.log(f"  PIL ラスタライザで再試行...")
-                        c.setPageSize((current_page_width, current_page_height))
-                        _draw_svg_via_pil(
-                            svg_file, c,
-                            current_page_width, current_page_height, 10 * mm,
-                            f"Layer {i}/{len(svg_files)}: {svg_file.stem} [ラスタ化]")
-                        page_drawn = True
-                    except Exception as e2:
-                        self.log(f"  PIL ラスタライザも失敗: {e2}")
-                        c.setPageSize((current_page_width, current_page_height))
-                        c.setFont("Helvetica", 10)
-                        c.setFillColorRGB(0.5, 0.5, 0.5)
-                        c.drawCentredString(
-                            current_page_width / 2, current_page_height / 2,
-                            f"[Layer {i}: 描画失敗 — {svg_file.stem}]")
-                        c.setFillColorRGB(0, 0, 0)
-                        page_drawn = True
-
-                if page_drawn and i < len(svg_files):
-                    c.showPage()
-
+                    continue
+            
+            # PDFを保存
             c.save()
-
+            
             self.log(f"\n=== PDF生成完了 ===")
             self.log(f"ファイル: {pdf_path}")
-            self.log(f"ページ数: {len(svg_files) + 1}")
-
+            self.log(f"ページ数: {len(svg_files)}")
+            
             return pdf_path
-
+            
         except ImportError:
             self.root.after(0, lambda: messagebox.showerror(
                 "エラー",
@@ -1463,7 +1269,7 @@ class TerrainLayerGUI:
             import traceback
             self.log(f"エラー: {traceback.format_exc()}")
             return None
-
+    
     def _print_pdf(self, pdf_path):
         """PDFを印刷"""
         import platform
